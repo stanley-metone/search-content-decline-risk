@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Which pages decline next? Scoring content for refresh review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,600;1,400&family=Public+Sans:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f5f7;--ink:#17212b;--mute:#58656f;--rule:#cdd5db;--accent:#1f5f8b;--fill:#fff3bf}
+@media (prefers-color-scheme:dark){:root{--bg:#12181e;--ink:#e6ebef;--mute:#9aa7b1;--rule:#2b3640;--accent:#6fb0dc;--fill:#4a3f10}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:19px/1.65 Newsreader,Georgia,serif}
+main{max-width:46rem;margin:0 auto;padding:3rem 1.25rem 5rem}
+h1,h2{font-family:"Public Sans",system-ui,sans-serif;line-height:1.15;letter-spacing:-.01em}
+h1{font-size:2.3rem;margin:0 0 .5rem}
+h2{font-size:1.3rem;margin:3rem 0 .6rem;padding-top:1rem;border-top:1px solid var(--rule)}
+.sub{color:var(--mute);font-style:italic;margin:0 0 2rem}
+.abstract{border-left:3px solid var(--accent);padding:.2rem 0 .2rem 1rem}
+a{color:var(--accent)}
+img{max-width:100%;height:auto;border:1px solid var(--rule);background:#fff}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{text-align:left;padding:.4rem .6rem;border-bottom:1px solid var(--rule)}
+.scroll{overflow-x:auto}
+.fill{background:var(--fill);padding:0 .25em;border-radius:3px}
+figcaption{color:var(--mute);font-size:.9rem}
+</style></head><body><main>
+<h1>Which pages decline next? Scoring content for refresh review</h1>
+<p class="sub">Capstone, Machine Learning track. Stanley Metone</p>
+
+<h2>Abstract</h2>
+<p class="abstract">Content teams cannot review every page, so they need to know where to look first. We ask which pages are likely to lose clicks in the coming weeks. Using daily search performance for <span class="fill">{{N_PAGES}}</span> pages across <span class="fill">{{N_CLIENTS}}</span> pseudonymized clients, we build features from an earlier window and label declines in a later window. A gradient-boosted model reaches PR-AUC <span class="fill">{{PR_MODEL}}</span> against <span class="fill">{{PR_BASE}}</span> for a momentum baseline on held-out clients. The result is a ranked review list with reason codes, offered as decision support rather than proof of causation.</p>
+
+<h2>Introduction</h2>
+<p>The decision: with limited editor time, which pages should be reviewed for a refresh this cycle? A short ranked list with reasons is more useful than a full audit.</p>
+
+<h2>Data</h2>
+<p>Release v20260703 of the FlyRank pseudonymized warehouse: <code>fact_content_daily_performance</code> (latest-month sample, <span class="fill">{{DATE_RANGE}}</span>), plus <code>dim_content</code> and <code>dim_clients</code> for context. Pages with fewer than 30 clicks in the feature window were excluded because their rates are too noisy to score. No client names, domains, URLs or queries appear in this paper.</p>
+
+<h2>Methodology</h2>
+<p><b>Windows.</b> The first two thirds of dates form the feature window; the final third is the label window. <b>Label.</b> A page is a decline if its daily clicks fell by at least 20%. Pages with no rows in the label window count as zero clicks. <b>Features.</b> Clicks, impressions, click-through rate, impression-weighted position, active days, and last-7 versus prior-7 click momentum. <b>Baseline.</b> Rank pages by falling momentum alone. <b>Validation.</b> One grouped split by client, so no client appears in both training and test. <b>Leakage checks.</b> Features use only feature-window dates, train and test clients are disjoint, and a model trained on shuffled labels scores near 0.5 AUC (<span class="fill">{{SHUF_AUC}}</span>).</p>
+
+<h2>Results</h2>
+<div class="scroll"><table>
+<tr><th>Model</th><th>ROC-AUC</th><th>PR-AUC</th><th>Precision at top 5%</th></tr>
+<tr><td>Baseline (momentum)</td><td><span class="fill">{{ROC_BASE}}</span></td><td><span class="fill">{{PR_BASE_T}}</span></td><td><span class="fill">{{P5_BASE}}</span></td></tr>
+<tr><td>Gradient boosting</td><td><span class="fill">{{ROC_MODEL}}</span></td><td><span class="fill">{{PR_MODEL_T}}</span></td><td><span class="fill">{{P5_MODEL}}</span></td></tr>
+</table></div>
+<p>Base rate of declines in the test set: <span class="fill">{{BASE_RATE}}</span>.</p>
+<figure><img src="figures/pr_curve.png" alt="Precision-recall curves for model and baseline on held-out clients"><figcaption>Precision and recall for model and baseline on held-out clients.</figcaption></figure>
+<figure><img src="figures/feature_importance.png" alt="Permutation importance by feature"><figcaption>Which features the model relies on, by drop in PR-AUC when shuffled.</figcaption></figure>
+
+<h2>Limitations</h2>
+<p>These are observed associations and directional signals. Nothing here proves how Google ranks pages or that a refresh causes recovery. The sample covers one month, so the label reflects a short horizon. Treating missing rows as zero clicks may overstate declines. Use the list to prioritise human review.</p>
+
+<h2>Ranked recommendations</h2>
+<p>Pages in the top 5% of predicted risk, grouped by reason code (aggregates only).</p>
+<div class="scroll"><table>
+<tr><th>Reason code</th><th>Pages</th><th>Suggested action</th></tr>
+<tr><td>MOMENTUM_DOWN</td><td><span class="fill">{{C_MOM}}</span></td><td>Review for freshness and intent match first.</td></tr>
+<tr><td>LOW_RANK_POSITION</td><td><span class="fill">{{C_POS}}</span></td><td>Strengthen content depth and internal links.</td></tr>
+<tr><td>CTR_BELOW_MEDIAN</td><td><span class="fill">{{C_CTR}}</span></td><td>Test title and description rewrites.</td></tr>
+<tr><td>INTERMITTENT_VISIBILITY</td><td><span class="fill">{{C_INT}}</span></td><td>Monitor; check indexing and seasonality.</td></tr>
+</table></div>
+
+<h2>Reproducibility</h2>
+<p>Notebooks and code: <a href="https://github.com/stanley-metone/search-content-decline-risk">repository</a>. Run <code>work/capstone.ipynb</code> top to bottom.</p>
+
+<h2>Acknowledgments and data credit</h2>
+<p>Built on the FlyRank ML Internship dataset, <a href="https://flyrank.ai" target="_blank" rel="noopener">https://flyrank.ai</a>. Data is pseudonymized and used for anonymized research and education only.</p>
+</main></body></html>
